@@ -34,15 +34,40 @@ export async function fetchMenu(): Promise<Product[]> {
   return (data.menu as Product[]) ?? [];
 }
 
-export async function createQuote(userId: string, productId: string): Promise<Quote> {
+export interface Scenario {
+  id: string;
+  title: string;
+}
+
+// The service publishes the saga demo scenarios it supports.
+export async function fetchScenarios(): Promise<{ scenarios: Scenario[]; default: string }> {
+  const res = await fetch(`${SERVICE_BASE}/scenarios`);
+  if (!res.ok) throw new Error(`scenarios failed: ${res.status}`);
+  return res.json();
+}
+
+export async function createQuote(userId: string, productId: string, scenario: string): Promise<Quote> {
   const res = await fetch(`${SERVICE_BASE}/quote`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId, productId }),
+    body: JSON.stringify({ userId, productId, scenario }),
   });
   if (!res.ok) throw new Error(`quote failed: ${res.status}`);
   const data = await res.json();
   return data.quote as Quote;
+}
+
+// Poll the SERVICE's own delivery status (DONE / PENDING / NOT_DONE / UNKNOWN)
+// to watch async/reconcile transitions — no auth needed.
+export interface DeliveryStatus {
+  status: string;
+  externalRef?: string;
+}
+
+export async function fetchOrderStatus(orderId: string): Promise<DeliveryStatus | null> {
+  const res = await fetch(`${SERVICE_BASE}/status/${encodeURIComponent(orderId)}`);
+  if (!res.ok) return null;
+  return res.json();
 }
 
 export interface Order {
